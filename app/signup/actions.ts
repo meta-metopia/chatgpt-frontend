@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { kv } from '@vercel/kv'
 import { getUser } from '../login/actions'
 import { AuthError } from 'next-auth'
+import { get } from '@vercel/edge-config'
 
 export async function createUser(
   email: string,
@@ -59,6 +60,16 @@ export async function signup(
     })
 
   if (parsedCredentials.success) {
+    // check if email in whitelist
+    const chatConfig = await get('chat')
+    const whitelist = (chatConfig as any)['ALLOWED_EMAIL']
+    if (!(whitelist as string[]).includes(email)) {
+      return {
+        type: 'error',
+        resultCode: ResultCode.UserNotAllowed
+      }
+    }
+
     const salt = crypto.randomUUID()
 
     const encoder = new TextEncoder()
