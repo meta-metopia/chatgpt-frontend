@@ -1,21 +1,16 @@
-import * as React from 'react'
 import Link from 'next/link'
+import * as React from 'react'
 
-import { cn } from '@/lib/utils'
 import { auth } from '@/auth'
-import { Button, buttonVariants } from '@/components/ui/button'
-import {
-  IconGitHub,
-  IconNextChat,
-  IconSeparator,
-  IconVercel
-} from '@/components/ui/icons'
+import { Button } from '@/components/ui/button'
+import { IconNextChat, IconSeparator } from '@/components/ui/icons'
 import { UserMenu } from '@/components/user-menu'
-import { SidebarMobile } from './sidebar-mobile'
-import { SidebarToggle } from './sidebar-toggle'
-import { ChatHistory } from './chat-history'
 import { Session } from '@/lib/types'
 
+import { ChatHistory } from './chat-history'
+import { SidebarMobile } from './sidebar-mobile'
+import { SidebarToggle } from './sidebar-toggle'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 async function UserOrLogin() {
   const session = (await auth()) as Session
   return (
@@ -54,6 +49,17 @@ export function Header() {
         <React.Suspense fallback={<div className="flex-1 overflow-auto" />}>
           <UserOrLogin />
         </React.Suspense>
+
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger tabIndex={-1}>
+            <a className="text-sm rounded-3xl bg-gray-600 px-2 py-1">
+              {process.env.VERCEL_GIT_COMMIT_REF}
+            </a>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-sm">{process.env.VERCEL_GIT_COMMIT_MESSAGE}</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <div className="flex items-center justify-end space-x-2"></div>
     </header>
