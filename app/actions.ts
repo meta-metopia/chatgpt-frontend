@@ -7,6 +7,39 @@ import { kv } from '@vercel/kv'
 import { auth } from '@/auth'
 import { type Chat } from '@/lib/types'
 
+export async function addGlobalState(key: string, value: any) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return {
+      error: 'Unauthorized'
+    }
+  }
+  const setKey = `user:globalState:${session.user.id}:${key}`
+  await kv.set(setKey, value)
+}
+
+export async function getGlobalState(key: string) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return {
+      error: 'Unauthorized'
+    }
+  }
+  const getKey = `user:globalState:${session.user.id}:${key}`
+  return kv.get(getKey)
+}
+
+export async function removeGlobalState(key: string) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return {
+      error: 'Unauthorized'
+    }
+  }
+  const getKey = `user:globalState:${session.user.id}:${key}`
+  return kv.del(getKey)
+}
+
 export async function getChats(userId?: string | null) {
   const session = await auth()
 
