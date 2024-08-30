@@ -42,7 +42,7 @@ export default function HeaderModelSelector({
     <Listbox
       value={currentModel}
       onChange={async value => {
-        await updateModelForChat(chatId, value)
+        await updateModelForChat(id as string, value)
         setCurrentModel(value)
       }}
     >
