@@ -4,6 +4,10 @@ export type Message = CoreMessage & {
   id: string
 }
 
+export interface GlobalState {
+  preferedModel: string
+}
+
 export interface Chat extends Record<string, any> {
   id: string
   title: string
@@ -12,6 +16,7 @@ export interface Chat extends Record<string, any> {
   path: string
   messages: Message[]
   sharePath?: string
+  model?: string
 }
 
 export type ServerActionResult<Result> = Promise<

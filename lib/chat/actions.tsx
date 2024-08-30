@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { openai } from '@ai-sdk/openai'
 import {
   createAI,
   createStreamableValue,
@@ -11,6 +10,7 @@ import {
 
 import { BotCard, BotMessage, Purchase, Stock } from '@/components/stocks'
 
+import { getModelForChat, updateModelForChat } from '@/app/(chat)/actions'
 import { saveChat } from '@/app/actions'
 import { auth } from '@/auth'
 import { Events } from '@/components/stocks/events'
@@ -19,16 +19,13 @@ import { Stocks } from '@/components/stocks/stocks'
 import { Chat, Message } from '@/lib/types'
 import { nanoid } from '@/lib/utils'
 import { createAzure } from '@ai-sdk/azure'
+import { Model } from './models'
 
-const azure = createAzure({
-  resourceName: process.env.AZURE_OPENAI_GPT4O_MINI_API_RESOURCE_NAME,
-  apiKey: process.env.AZURE_OPENAI_GPT4O_MINI_API_KEY
-})
 async function submitUserMessage(content: string) {
   'use server'
   // get user session
   const session = await auth()
-  console.log(session)
+
   if (!session?.user) {
     return {
       id: nanoid(),
@@ -41,6 +38,21 @@ async function submitUserMessage(content: string) {
   }
 
   const aiState = getMutableAIState<typeof AI>()
+  // if there is no previous chat, get a new model from global state
+  const model = await getModelForChat(
+    aiState.get().messages.length === 0 ? undefined : aiState.get().chatId
+  )
+  let isFirstMessage = false
+  if (aiState.get().messages.length === 0) {
+    isFirstMessage = true
+  }
+
+  if ('error' in model) {
+    return {
+      id: nanoid(),
+      display: <BotMessage content={model.error.message} />
+    }
+  }
 
   aiState.update({
     ...aiState.get(),
@@ -57,8 +69,12 @@ async function submitUserMessage(content: string) {
   let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
   let textNode: undefined | React.ReactNode
 
+  const azure = createAzure({
+    resourceName: model.resourceName,
+    apiKey: model.apiKey
+  })
   const result = await streamUI({
-    model: azure('gpt-4o-mini'),
+    model: azure(model.deploymentId),
     initial: <SpinnerMessage />,
     system: `\
     You are a helpful assistant`,
@@ -96,6 +112,10 @@ async function submitUserMessage(content: string) {
     }
   })
 
+  if (isFirstMessage) {
+    console.log('update model for chat', aiState.get().chatId, model.name)
+    await updateModelForChat(aiState.get().chatId, model.name)
+  }
   return {
     id: nanoid(),
     display: result.value

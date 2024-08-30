@@ -6,21 +6,18 @@ import { Button } from '@/components/ui/button'
 import { IconNextChat, IconSeparator } from '@/components/ui/icons'
 import { UserMenu } from '@/components/user-menu'
 import { Session } from '@/lib/types'
-import clsx from 'clsx'
 
+import { headers } from 'next/headers'
 import { ChatHistory } from './chat-history'
+import HeaderModelSelector from './header-model-selector'
 import { SidebarMobile } from './sidebar-mobile'
 import { SidebarToggle } from './sidebar-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-import {
-  Listbox,
-  ListboxOption,
-  ListboxOptions,
-  ListboxButton
-} from '@headlessui/react'
+import { getModelForChat } from '@/app/(chat)/actions'
 
 async function UserOrLogin() {
   const session = (await auth()) as Session
+
   return (
     <>
       {session?.user ? (
@@ -50,34 +47,21 @@ async function UserOrLogin() {
   )
 }
 
-export function ModelSelector() {
-  return (
-    <Listbox value={'gpt-4o-mini'}>
-      <ListboxButton
-        className={clsx(
-          'relative block w-full rounded-lg bg-white/5 py-1.5 pr-8 pl-3 text-left text-sm/6 text-white',
-          'focus:outline-none data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-white/25'
-        )}
-      >
-        <span className="text-sm text-gray-200">Gpt4o-mini</span>
-      </ListboxButton>
-      <ListboxOptions
-        anchor="bottom"
-        transition
-        className={clsx(
-          'w-52 rounded-xl border border-white/5 bg-background/20 backdrop-blur-md p-1 [--anchor-gap:var(--spacing-1)] focus:outline-none',
-          'transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0 z-50'
-        )}
-      >
-        <ListboxOption
-          value="gpt-4o-mini"
-          className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-        >
-          <span className="text-sm/6 text-white">Gpt4o-mini</span>
-        </ListboxOption>
-      </ListboxOptions>
-    </Listbox>
-  )
+export async function ModelSelector() {
+  const urlString = headers().get('x-url')
+  const url = new URL(urlString!)
+  const id = url.pathname.split('/')[2]
+  const currentModel = await getModelForChat(id)
+
+  if ('error' in currentModel) {
+    return (
+      <div>
+        <span className="text-sm/6 dark:text-white">Error loading model</span>
+      </div>
+    )
+  }
+
+  return <HeaderModelSelector currentModel={currentModel.name} chatId={id} />
 }
 
 export function Header() {
@@ -87,10 +71,9 @@ export function Header() {
         <React.Suspense fallback={<div className="flex-1 overflow-auto" />}>
           <UserOrLogin />
         </React.Suspense>
-
         <Tooltip delayDuration={0}>
           <TooltipTrigger tabIndex={-1}>
-            <a className="text-sm rounded-3xl bg-gray-600 px-2 py-1">
+            <a className="text-sm rounded-3xl dark:bg-gray-600 bg-gray-200 px-2 py-1">
               {process.env.VERCEL_GIT_COMMIT_REF}
             </a>
           </TooltipTrigger>
