@@ -3,10 +3,8 @@
 import * as React from 'react'
 import Textarea from 'react-textarea-autosize'
 
-import { useActions, useUIState } from 'ai/rsc'
+import { readStreamableValue, useActions, useUIState } from 'ai/rsc'
 
-import { UserMessage } from './stocks/message'
-import { type AI } from '@/lib/chat/actions'
 import { Button } from '@/components/ui/button'
 import { IconArrowElbow, IconPlus } from '@/components/ui/icons'
 import {
@@ -14,9 +12,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@/components/ui/tooltip'
+import { type AI } from '@/lib/chat/actions'
 import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
+import '@radix-ui/themes/styles.css'
 import { nanoid } from 'nanoid'
 import { useRouter } from 'next/navigation'
+import { UserMessage } from './stocks/message'
+import { Spinner } from '@radix-ui/themes'
 
 export function PromptForm({
   input,
@@ -30,6 +32,7 @@ export function PromptForm({
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
   const { submitUserMessage } = useActions()
   const [_, setMessages] = useUIState<typeof AI>()
+  const [loading, setLoading] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     if (inputRef.current) {
@@ -42,7 +45,8 @@ export function PromptForm({
       ref={formRef}
       onSubmit={async (e: any) => {
         e.preventDefault()
-
+        if (loading) return
+        setLoading(true)
         // Blur focus on mobile
         if (window.innerWidth < 600) {
           e.target['message']?.blur()
@@ -62,8 +66,17 @@ export function PromptForm({
         ])
 
         // Submit and get response message
-        const responseMessage = await submitUserMessage(value)
+        const responseMessage = await submitUserMessage(value).catch(() =>
+          setLoading(false)
+        )
         setMessages(currentMessages => [...currentMessages, responseMessage])
+        for await (const loadingDelta of readStreamableValue(
+          responseMessage.loadingState
+        )) {
+          if (loadingDelta) {
+            setLoading((loadingDelta as any).loading)
+          }
+        }
       }}
     >
       <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background px-8 sm:rounded-md sm:border sm:px-12">
@@ -101,8 +114,13 @@ export function PromptForm({
         <div className="absolute right-0 top-[13px] sm:right-4">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button type="submit" size="icon" disabled={input === ''}>
-                <IconArrowElbow />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={input === '' || loading}
+              >
+                {loading && <Spinner />}
+                {!loading && <IconArrowElbow />}
                 <span className="sr-only">Send message</span>
               </Button>
             </TooltipTrigger>
