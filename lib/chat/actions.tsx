@@ -19,12 +19,12 @@ import { Stocks } from '@/components/stocks/stocks'
 import { Chat, Message } from '@/lib/types'
 import { nanoid } from '@/lib/utils'
 import { createAzure } from '@ai-sdk/azure'
-import { Model } from './models'
 
 async function submitUserMessage(content: string) {
   'use server'
   // get user session
   const session = await auth()
+  const loadingState = createStreamableValue({ loading: true })
 
   if (!session?.user) {
     return {
@@ -93,6 +93,7 @@ async function submitUserMessage(content: string) {
 
       if (done) {
         textStream.done()
+        loadingState.done({ loading: false })
         aiState.done({
           ...aiState.get(),
           messages: [
@@ -118,7 +119,8 @@ async function submitUserMessage(content: string) {
   }
   return {
     id: nanoid(),
-    display: result.value
+    display: result.value,
+    loadingState: loadingState.value
   }
 }
 
